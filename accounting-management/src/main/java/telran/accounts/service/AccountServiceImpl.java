@@ -1,8 +1,15 @@
 package telran.accounts.service;
 import telran.exceptions.*;
 
+import javax.security.auth.login.AccountNotFoundException;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.stereotype.Service;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
@@ -15,30 +22,35 @@ import telran.accounts.repo.AccountsRepo;
 @Slf4j
 public class AccountServiceImpl implements AccountsService {
 	@Autowired
-	AccountsRepo accountsRepo;
+	final MongoTemplate mongoTemplate;
+	final PasswordEncoder passEncoder;
 
 	@Override
 	public AccountDto addAccount(AccountDto accountDto) {
-		log.debug("service recieved AccountData {}",accountDto);
-		if(accountsRepo.existsById(accountDto.email())) {
+		String email = accountDto.email();
+		Account account = null;
+		AccountDto encodedAccount = getEncoded(accountDto);
+		try {
+			account = mongoTemplate.insert(Account.of(encodedAccount));
+		} catch (DuplicateKeyException e) {
 			throw new AccountAlreadyExistsException();
 		}
-		Account accountToAdd =Account.of(accountDto);
-		accountsRepo.save(accountToAdd);
-		log.debug("Account {} was added",accountToAdd);
-		return accountDto;
+		log.debug("account {} has been saved",email);
+		return account.build();
+	}
+
+	private AccountDto getEncoded(AccountDto accountDto) {
+		return new AccountDto(accountDto.email(), passEncoder.encode(accountDto.password()), accountDto.roles());
 	}
 
 	@Override
-	public AccountDto removeAccount(String email) {
-		if(!accountsRepo.existsById(email)) {
+	public AccountDto removeAccount(String email) throws Exception {
+		Account account = mongoTemplate.findAndRemove(new Query(Criteria.where("email").is(email)), Account.class);
+		if(account==null) {
 			throw new AccountNotFoundException();
-			
 		}
-		Account accountToDelete = accountsRepo.findById(email).orElseThrow();
-		accountsRepo.delete(accountToDelete);
-		log.debug("Account {} was deleted ",accountToDelete);
-		return accountToDelete.build();
+		log.debug("account with email {} has been removed",email);
+		return account.build();
 	}
 
 }

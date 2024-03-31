@@ -14,7 +14,7 @@ import telran.accounts.service.AccountsService;
 @RestController
 @RequiredArgsConstructor
 @Slf4j
-@RequestMapping("accounts")
+@RequestMapping("/accounts")
 public class AccountsController {
 	final AccountsService accountService;
 	@PostMapping
@@ -22,8 +22,8 @@ public class AccountsController {
 	log.debug("addAccount:recieved Account Data {}",accountDto);
 	return accountService.addAccount(accountDto);
 	}
-	@DeleteMapping(UrlConstants.REMOVE_ACCOUNT)
-	AccountDto removeAccount(@RequestBody @Valid @PathVariable String email) {
+	@DeleteMapping("{emailS}")
+	AccountDto removeAccount(@RequestBody @Valid @PathVariable String email) throws Exception {
 		log.debug("removeAccount:recieved Account Email {}",email);
 		return accountService.removeAccount(email);
 	
