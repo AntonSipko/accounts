@@ -22,9 +22,15 @@ public class SecurityConfiguration {
 	SecurityFilterChain configure(HttpSecurity httpSecurity) throws Exception  {
 		httpSecurity.cors(customizer -> customizer.disable());
 		httpSecurity.csrf(customizer -> customizer.disable());
-		httpSecurity.authorizeHttpRequests(customizer -> customizer.anyRequest()
-				.hasAnyRole("USER", "ADMIN"));
-		httpSecurity.httpBasic(Customizer.withDefaults());
-		return httpSecurity.build();
-	}
+		httpSecurity.authorizeHttpRequests(customizer -> customizer
+				.requestMatchers(HttpMethod.PUT, "/accounts/update-password/{email}").authenticated()
+		        .requestMatchers(HttpMethod.DELETE, "/accounts/removeAccount/{email}").hasRole("USER")
+		        .requestMatchers(HttpMethod.POST, "accounts/add-account").hasRole("ADMIN")
+		        .anyRequest().authenticated()
+		        )
+		 .httpBasic(Customizer.withDefaults());
+		 return httpSecurity.build();
 }
+		
+	}
+

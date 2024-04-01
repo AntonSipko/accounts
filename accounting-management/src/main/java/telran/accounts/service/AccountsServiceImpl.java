@@ -8,7 +8,9 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -20,10 +22,12 @@ import telran.accounts.repo.AccountsRepo;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class AccountServiceImpl implements AccountsService {
+public class AccountsServiceImpl implements AccountsService {
 	@Autowired
 	final MongoTemplate mongoTemplate;
 	final PasswordEncoder passEncoder;
+	AccountsRepo accountRepo;
+	
 
 	@Override
 	public AccountDto addAccount(AccountDto accountDto) {
@@ -52,5 +56,15 @@ public class AccountServiceImpl implements AccountsService {
 		log.debug("account with email {} has been removed",email);
 		return account.build();
 	}
-
+	@Override
+	public void updatePassword(String email, String newPassowrd) throws AccountNotFoundException, IllegalAccessException {
+		String currentUserEmail=SecurityContextHolder.getContext().getAuthentication().getName();
+		String userToUpdateEmail = accountRepo.findById(email).orElseThrow(()-> new AccountNotFoundException()).getEmail();
+		if(currentUserEmail!=userToUpdateEmail) {
+			throw new IllegalAccessException();
+		}
+		Update update= new Update().set("password",passEncoder.encode(newPassowrd));
+		mongoTemplate.findAndModify(new Query(Criteria.where("email").is(userToUpdateEmail)), update, null, Account.class );
+		
+	}
 }
